@@ -83,10 +83,10 @@ const ToastType = {
   Succes : "#00b894",
 }
 
-const copyClip = (text, toast) => {
+const copyClip = (text, toast, warn=false) => {
         navigator.clipboard.writeText(text).then(
             () => {
-                 new Toast(toast,ToastType.Succes,2000);
+                 new Toast(toast, warn ? ToastType.Warning : ToastType.Succes,2000);
             },
             () => {
                 new Toast(`Failed to copy ${text}`,ToastType.Danger,2000);
@@ -99,7 +99,7 @@ const copyLinks = (type='video/mp4')=>{
         .filter(item=>item.type.startsWith('video/mp4'))
         .map(item=> item.src);
         console.log({sources})
-        copyClip(sources.join(' '), `Copied visible ${type}: ${sources.length} links`)
+        copyClip(sources.join(' '), `Copied visible ${type}: ${sources.length} links`, sources.length === 0)
     } else {
         const sources = [...document.querySelectorAll('img')]
         .map(item=> item.src);
@@ -134,11 +134,13 @@ const createButton = (name='Copy src', type='video', offset = 10) => {
     root.appendChild(button);
 }
 
+let hoveredElement
 const createCopyButton = (imageElement) => {
     const isVideo = imageElement.tagName === "SOURCE"
     imageElement.style.position = "relative"
+    imageElement.style.filter = "none"
     const button = document.createElement('button');
-    button.innerText = isVideo ? "v" : " c ";
+    button.innerText = isVideo ? "📋🎞️" : " 📋🖼️ ";
     button.title = imageElement.src;
     button.className = "copyButt"
     button.style = `
@@ -149,8 +151,8 @@ const createCopyButton = (imageElement) => {
     border-radius: 3px;
     padding: 5px;
     opacity: 0.7;
-    right: 2px;
-    top: 2px;
+    right: 50%;
+    top: 50%;
     border: none;
     display: none;
     `;
@@ -165,22 +167,32 @@ const createCopyButton = (imageElement) => {
     if(attachTo.querySelector(".copyButt")){
         return;
     }
-    attachTo.addEventListener('pointerenter', ()=>{
-        console.log("enter")
+    attachTo.addEventListener('pointerenter', (e)=>{
+        //console.log("enter")
         button.style.display = "block"
+        hoveredElement = imageElement.src;
     })
-    attachTo.addEventListener('pointerleave', ()=>{
-        console.log("exit")
-    button.style.display = "none"
+    attachTo.addEventListener('pointerleave', (e)=>{
+        //console.log("exit")
+        button.style.display = "none"
+        hoveredElement = null
     })
     attachTo.style.filter = "none";
     attachTo.appendChild(button);
 }
 
+document.addEventListener("keypress", e=> {
+    if(hoveredElement) {
+        if(e.key === "c") {
+            copyClip(hoveredElement, `Copied ${hoveredElement}`)
+        }
+    }
+})
+
 setTimeout(()=>{
-    createButton('copy mp4 urls', 'video/mp4', 0)
-    createButton('copy webm urls', 'video/webm', 30)
-    createButton('copy image urls', 'image', 60)
+    createButton('copy mp4 🎞️', 'video/mp4', 0)
+    createButton('copy webm 🎞️', 'video/webm', 30)
+    createButton('copy image 🖼️ urls', 'image', 60)
 }, 5000)
 
 const callback = (mutationList, observer) => {
