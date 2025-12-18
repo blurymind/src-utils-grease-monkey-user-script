@@ -110,10 +110,36 @@ const copyLinks = (type='video/mp4')=>{
 }
 
 const getRoot = () => document.getElementById('main') ?? document.body.querySelector("main") ?? document.body;
+let buttonsVisible = false;
+let scrollVisible = true
+const buttonClasses = ["copyGlobalLinksSrcUtilsBtn", "copyLocallLinksSrcUtilsBtn"];
+const onToggleButtonVisibility = () => {
+    console.log({scrollVisible, buttonsVisible})
+    document.querySelectorAll(`.${buttonClasses[0]}`)
+     .forEach(button => {
+     button.style.display = buttonsVisible && scrollVisible ? "block":"none"
+ })
+}
+
+
+var scrollPos = 0;
+window.addEventListener('scroll',()=>{
+  // detects new state and compares it with the new one
+  if ((document.body.getBoundingClientRect()).top > scrollPos){
+      scrollVisible = true
+  }
+    else {
+        scrollVisible=false
+    }
+    onToggleButtonVisibility()
+	scrollPos = (document.body.getBoundingClientRect()).top;
+});
+
 const createButton = (name='Copy src', type='video', offset = 10) => {
     const button = document.createElement('button');
     button.innerText = name;
     button.id = name;
+    button.className = buttonClasses[0]
     button.style = `
     position: fixed;
     z-index: 999;
@@ -123,6 +149,7 @@ const createButton = (name='Copy src', type='video', offset = 10) => {
     border-radius: 3px;
     right: 10px;
     opacity: 0.7;
+    display: ${buttonsVisible ? "block":"none"};
     top: ${100 + (offset|| 0)}px;
     `;
 
@@ -142,7 +169,7 @@ const createCopyButton = (imageElement) => {
     const button = document.createElement('button');
     button.innerText = isVideo ? "📋🎞️" : " 📋🖼️ ";
     button.title = imageElement.src;
-    button.className = "copyButt"
+    button.className = buttonClasses[1]
     button.style = `
     position: absolute;
     z-index: 999;
@@ -164,7 +191,7 @@ const createCopyButton = (imageElement) => {
     })
     const attachTo = isVideo ? imageElement.parentElement.parentElement: imageElement.parentElement;
     //const size = imageElement.getBoundingClientRect()
-    if(attachTo.querySelector(".copyButt")){
+    if(attachTo.querySelector(`.${buttonClasses[1]}`)){
         return;
     }
     attachTo.addEventListener('pointerenter', (e)=>{
@@ -186,6 +213,10 @@ document.addEventListener("keypress", e=> {
         if(e.key === "c") {
             copyClip(hoveredElement, `Copied ${hoveredElement}`)
         }
+    }
+    if(e.key === "1") {
+        buttonsVisible = !buttonsVisible;
+        onToggleButtonVisibility()
     }
 })
 
