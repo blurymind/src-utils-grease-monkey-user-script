@@ -96,7 +96,7 @@ const copyClip = (text, toast, warn=false) => {
 const copyLinks = (type='video/mp4')=>{
     if(type.startsWith('video')){
         const sources = [...document.querySelectorAll('source')]
-        .filter(item=>item.type.startsWith('video/mp4'))
+        .filter(item=>item.type === type)
         .map(item=> item.src);
         console.log({sources})
         copyClip(sources.join(' '), `Copied visible ${type}: ${sources.length} links`, sources.length === 0)
@@ -114,7 +114,7 @@ let buttonsVisible = false;
 let scrollVisible = true
 const buttonClasses = ["copyGlobalLinksSrcUtilsBtn", "copyLocallLinksSrcUtilsBtn"];
 const onToggleButtonVisibility = () => {
-    console.log({scrollVisible, buttonsVisible})
+    //console.log({scrollVisible, buttonsVisible})
     document.querySelectorAll(`.${buttonClasses[0]}`)
      .forEach(button => {
      button.style.display = buttonsVisible && scrollVisible ? "block":"none"
@@ -163,6 +163,9 @@ const createButton = (name='Copy src', type='video', offset = 10) => {
 
 let hoveredElement
 const createCopyButton = (imageElement) => {
+    if (imageElement.src.startsWith("blob:") || imageElement.src.endsWith(".png")) {
+        return;
+    }
     const isVideo = imageElement.tagName === "SOURCE"
     imageElement.style.position = "relative"
     imageElement.style.filter = "none"
