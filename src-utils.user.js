@@ -22,7 +22,7 @@ class Toast {
     var element = document.createElement('div');
     element.className = "toast-notification";
     this.element = element;
-    var countElements = document.getElementsByClassName("toast-notification");
+    var countElements = Array.from(document.getElementsByClassName("toast-notification"));
     if(countElements.length > limitToast) {
         countElements.forEach((item, index)=> {
           if(index === 0) item.remove()
@@ -90,13 +90,21 @@ const ToastType = {
   Succes : "#00b894",
 }
 
+const attemptBetterQuality = (url) => {
+    if(url.startsWith('https://image.civitai.com/') && url.includes('optimized=true')) {
+      return url.replace('optimized=true', 'original=true,quality=90').replace(/width\=[0-9]+,/g, '')
+    }
+    return url;
+}
+
 const copyClip = (text, toast, warn=false, limitToast = 4) => {
-        navigator.clipboard.writeText(text).then(
+    const optimizedLink = attemptBetterQuality(text);
+        navigator.clipboard.writeText(optimizedLink).then(
             () => {
                  new Toast(toast, warn ? ToastType.Warning : ToastType.Succes,2000, limitToast);
             },
             () => {
-                new Toast(`Failed to copy ${text}`,ToastType.Danger,2000);
+                new Toast(`Failed to copy ${optimizedLink}`,ToastType.Danger,2000);
             },
         );
 }
