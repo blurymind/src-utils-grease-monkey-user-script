@@ -96,7 +96,7 @@ const copyClip = (text, toast, warn=false) => {
 const copyLinks = (type='video/mp4')=>{
     if(type.startsWith('video')){
         const sources = [...document.querySelectorAll('source')]
-        .filter(item=>item.type === type)
+        .filter(item=>item.type.startsWith('video/mp4'))
         .map(item=> item.src);
         console.log({sources})
         copyClip(sources.join(' '), `Copied visible ${type}: ${sources.length} links`, sources.length === 0)
@@ -110,36 +110,10 @@ const copyLinks = (type='video/mp4')=>{
 }
 
 const getRoot = () => document.getElementById('main') ?? document.body.querySelector("main") ?? document.body;
-let buttonsVisible = false;
-let scrollVisible = true
-const buttonClasses = ["copyGlobalLinksSrcUtilsBtn", "copyLocallLinksSrcUtilsBtn"];
-const onToggleButtonVisibility = () => {
-    //console.log({scrollVisible, buttonsVisible})
-    document.querySelectorAll(`.${buttonClasses[0]}`)
-     .forEach(button => {
-     button.style.display = buttonsVisible && scrollVisible ? "block":"none"
- })
-}
-
-
-var scrollPos = 0;
-window.addEventListener('scroll',()=>{
-  // detects new state and compares it with the new one
-  if ((document.body.getBoundingClientRect()).top > scrollPos){
-      scrollVisible = true
-  }
-    else {
-        scrollVisible=false
-    }
-    onToggleButtonVisibility()
-	scrollPos = (document.body.getBoundingClientRect()).top;
-});
-
 const createButton = (name='Copy src', type='video', offset = 10) => {
     const button = document.createElement('button');
     button.innerText = name;
     button.id = name;
-    button.className = buttonClasses[0]
     button.style = `
     position: fixed;
     z-index: 999;
@@ -149,7 +123,6 @@ const createButton = (name='Copy src', type='video', offset = 10) => {
     border-radius: 3px;
     right: 10px;
     opacity: 0.7;
-    display: ${buttonsVisible ? "block":"none"};
     top: ${100 + (offset|| 0)}px;
     `;
 
@@ -163,16 +136,13 @@ const createButton = (name='Copy src', type='video', offset = 10) => {
 
 let hoveredElement
 const createCopyButton = (imageElement) => {
-    if (imageElement.src.startsWith("blob:") || imageElement.src.endsWith(".png")) {
-        return;
-    }
     const isVideo = imageElement.tagName === "SOURCE"
     imageElement.style.position = "relative"
     imageElement.style.filter = "none"
     const button = document.createElement('button');
     button.innerText = isVideo ? "📋🎞️" : " 📋🖼️ ";
     button.title = imageElement.src;
-    button.className = buttonClasses[1]
+    button.className = "copyButt"
     button.style = `
     position: absolute;
     z-index: 999;
@@ -194,7 +164,11 @@ const createCopyButton = (imageElement) => {
     })
     const attachTo = isVideo ? imageElement.parentElement.parentElement: imageElement.parentElement;
     //const size = imageElement.getBoundingClientRect()
-    if(attachTo.querySelector(`.${buttonClasses[1]}`)){
+    if(isVideo) {
+     const pauseAllVideos = localStorage.getItem("src-tools-pause-all-videos") === 'true';
+     if (pauseAllVideos) imageElement.parentElement.pause()
+    }
+    if(attachTo.querySelector(".copyButt")){
         return;
     }
     attachTo.addEventListener('pointerenter', (e)=>{
@@ -212,22 +186,52 @@ const createCopyButton = (imageElement) => {
 }
 
 document.addEventListener("keypress", e=> {
+    console.log(e, hoveredElement)
     if(hoveredElement) {
+
         if(e.key === "c") {
             copyClip(hoveredElement, `Copied ${hoveredElement}`)
         }
     }
-    if(e.key === "1") {
-        buttonsVisible = !buttonsVisible;
-        onToggleButtonVisibility()
-    }
 })
+
+const createCheckbox = (name, isTrue, onToggle, offset) => {
+    const wrapper = document.createElement('div');
+    const checkbox = document.createElement('input');
+    wrapper.innerText = name;
+    checkbox.id = name;
+    checkbox.type= 'checkbox'
+    checkbox.checked = isTrue
+    wrapper.style = `
+    position: fixed;
+    z-index: 999;
+    background: #000000e0;
+    color: yellow;
+    padding: 2px;
+    border-radius: 3px;
+    right: 10px;
+    opacity: 0.7;
+    top: ${100 + (offset|| 0)}px;
+    `;
+    checkbox.addEventListener('change', onToggle)
+    const root = getRoot();
+    wrapper.appendChild(checkbox);
+    root.appendChild(wrapper)
+}
 
 setTimeout(()=>{
     createButton('copy mp4 🎞️', 'video/mp4', 0)
     createButton('copy webm 🎞️', 'video/webm', 30)
     createButton('copy image 🖼️ urls', 'image', 60)
-}, 5000)
+    const pauseAllVideos = localStorage.getItem("src-tools-pause-all-videos") === 'true';
+    console.log({pauseAllVideos})
+    createCheckbox('Pause videos', pauseAllVideos, event => {
+        const isChecked = event.target.checked
+        console.log(isChecked, event.target, event.target.value, event.target.checked )
+        localStorage.setItem("src-tools-pause-all-videos",isChecked);
+        document.querySelectorAll("video").forEach(item=> isChecked ? item.pause() : item.play())
+    }, 90)
+}, 2000)
 
 const callback = (mutationList, observer) => {
   for (const mutation of mutationList) {
@@ -262,3 +266,5 @@ setTimeout(()=>{
     //console.log({sources})
     sources.filter(item=>item.type === "video/mp4").forEach(createCopyButton)
 }, 7000)
+
+    // Your code here...
