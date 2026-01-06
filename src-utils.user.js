@@ -14,7 +14,7 @@
 // ==/UserScript==
 
 class Toast {
-  constructor(message,color,time){
+  constructor(message,color,time, limitToast = 4){
     this.message = message;
     this.color = color;
     this.time = time;
@@ -23,7 +23,12 @@ class Toast {
     element.className = "toast-notification";
     this.element = element;
     var countElements = document.getElementsByClassName("toast-notification");
-      element.style = `
+    if(countElements.length > limitToast) {
+        countElements.forEach((item, index)=> {
+          if(index === 0) item.remove()
+        })
+    }
+    element.style = `
    min-width: 400px;
   height:80px;
   background-color:white;
@@ -37,6 +42,7 @@ class Toast {
   z-index:1;
   display:flex;
   flex-direction:row;
+  overflow: hidden;
   margin-top: ${(countElements.length *100)}px;
   background-color:${this.color};
   z-index: 999999;
@@ -68,6 +74,7 @@ class Toast {
     `
     close.appendChild(icon);
     element.append(close);
+
     document.body.appendChild(element);
     setTimeout(function() {
       element.remove();
@@ -83,10 +90,10 @@ const ToastType = {
   Succes : "#00b894",
 }
 
-const copyClip = (text, toast, warn=false) => {
+const copyClip = (text, toast, warn=false, limitToast = 4) => {
         navigator.clipboard.writeText(text).then(
             () => {
-                 new Toast(toast, warn ? ToastType.Warning : ToastType.Succes,2000);
+                 new Toast(toast, warn ? ToastType.Warning : ToastType.Succes,2000, limitToast);
             },
             () => {
                 new Toast(`Failed to copy ${text}`,ToastType.Danger,2000);
@@ -110,11 +117,15 @@ const copyLinks = (type='video/mp4')=>{
 }
 
 const getRoot = () => document.getElementById('main') ?? document.body.querySelector("main") ?? document.body;
-const createButton = (name='Copy src', type='video', offset = 10) => {
+const createButton = (name='Copy src', type='video', offset = 10, isChecked, onToggle) => {
+    const wrapper = document.createElement('div');
     const button = document.createElement('button');
+    const checkbox = document.createElement('input');
+    checkbox.type= 'checkbox'
+    checkbox.checked = isChecked
     button.innerText = name;
     button.id = name;
-    button.style = `
+    wrapper.style = `
     position: fixed;
     z-index: 999;
     background: #000000e0;
@@ -124,14 +135,24 @@ const createButton = (name='Copy src', type='video', offset = 10) => {
     right: 10px;
     opacity: 0.7;
     top: ${100 + (offset|| 0)}px;
+    display: flex;
+    flex: 1;
     `;
+    button.style = `
+flex:1;
+    `
 
     button.addEventListener('click', ()=> {
         copyLinks(type)
     })
     const root = getRoot();
     console.log({root})
-    root.appendChild(button);
+    wrapper.appendChild(button)
+    if(isChecked != null) {
+        checkbox.addEventListener('change', onToggle)
+        wrapper.appendChild(checkbox)
+    }
+    root.appendChild(wrapper);
 }
 
 let hoveredElement
@@ -182,6 +203,7 @@ const createCopyButton = (imageElement) => {
         hoveredElement = null
     })
     attachTo.style.filter = "none";
+
     attachTo.appendChild(button);
 }
 
@@ -220,7 +242,11 @@ const createCheckbox = (name, isTrue, onToggle, offset) => {
 }
 
 setTimeout(()=>{
-    createButton('copy mp4 🎞️', 'video/mp4', 0)
+    const autoCopyMp4 = localStorage.getItem("src-tools-auto-copy-mp4") === 'true';
+    createButton('copy mp4 🎞️ a:', 'video/mp4', 0, autoCopyMp4, event => {
+        const isChecked = event.target.checked
+        localStorage.setItem("src-tools-auto-copy-mp4",isChecked);
+    })
     createButton('copy webm 🎞️', 'video/webm', 30)
     createButton('copy image 🖼️ urls', 'image', 60)
     const pauseAllVideos = localStorage.getItem("src-tools-pause-all-videos") === 'true';
@@ -246,6 +272,10 @@ const callback = (mutationList, observer) => {
                 sources.filter(item=>item.type === "video/mp4").forEach(createCopyButton)
             }
         }, 500)
+         const autoCopyMp4 = localStorage.getItem("src-tools-auto-copy-mp4") === 'true';
+        if(autoCopyMp4) {
+           copyLinks("video/mp4")
+        }
 
     } else if (mutation.type === "attributes") {
       //console.log(`The ${mutation.attributeName} attribute was modified.`, mutation);
@@ -266,5 +296,3 @@ setTimeout(()=>{
     //console.log({sources})
     sources.filter(item=>item.type === "video/mp4").forEach(createCopyButton)
 }, 7000)
-
-    // Your code here...
