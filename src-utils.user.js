@@ -91,6 +91,8 @@ const ToastType = {
 }
 
 const attemptBetterQuality = (url) => {
+    const bestQ = document.getElementById('Best quality src').checked
+    if(!bestQ) return url;
     if(url.startsWith('https://image.civitai.com/') && url.includes('optimized=true')) {
       return url.replace('optimized=true', 'original=true,quality=90').replace(/width\=[0-9]+,/g, '')
     }
@@ -98,27 +100,31 @@ const attemptBetterQuality = (url) => {
 }
 
 const copyClip = (text, toast, warn=false, limitToast = 4) => {
-    const optimizedLink = attemptBetterQuality(text);
-        navigator.clipboard.writeText(optimizedLink).then(
+    const bestQ = document.getElementById('Best quality src').checked
+        navigator.clipboard.writeText(text).then(
             () => {
-                 new Toast(toast, warn ? ToastType.Warning : ToastType.Succes,2000, limitToast);
+                const bestQ = document.getElementById('Best quality src').checked
+                 new Toast(bestQ? 'B: '+toast: toast, warn ? ToastType.Warning : ToastType.Succes,2000, limitToast);
             },
-            () => {
-                new Toast(`Failed to copy ${optimizedLink}`,ToastType.Danger,2000);
+            (copyError) => {
+                new Toast(`Failed to copy ${text}`,ToastType.Danger,2000);
+                console.log({copyError})
             },
         );
 }
 const copyLinks = (type='video/mp4')=>{
     if(type.startsWith('video')){
         const sources = [...document.querySelectorAll('source')]
-        .filter(item=>item.type.startsWith('video/mp4'))
-        .map(item=> item.src);
+        .filter(item=>item.type.startsWith(type))
+        .map(item=> attemptBetterQuality(item.src));
         console.log({sources})
+        if(sources.length === 0)return;
         copyClip(sources.join(' '), `Copied visible ${type}: ${sources.length} links`, sources.length === 0)
     } else {
         const sources = [...document.querySelectorAll('img')]
-        .map(item=> item.src);
+        .map(item=> attemptBetterQuality(item.src));
         console.log({sources})
+        if(sources.length === 0)return;
         copyClip(sources.join(' '), `Copied visible ${type}: ${sources.length} links`)
     }
     //GM_setClipboard (sources.join(' '));
@@ -131,6 +137,7 @@ const createButton = (name='Copy src', type='video', offset = 10, isChecked, onT
     const checkbox = document.createElement('input');
     checkbox.type= 'checkbox'
     checkbox.checked = isChecked
+    checkbox.id = name + '-check'
     button.innerText = name;
     button.id = name;
     wrapper.style = `
@@ -170,7 +177,7 @@ const createCopyButton = (imageElement) => {
     imageElement.style.filter = "none"
     const button = document.createElement('button');
     button.innerText = isVideo ? "📋🎞️" : " 📋🖼️ ";
-    button.title = imageElement.src;
+    button.title = attemptBetterQuality(imageElement.src);
     button.className = "copyButt"
     button.style = `
     position: absolute;
@@ -189,7 +196,7 @@ const createCopyButton = (imageElement) => {
     button.addEventListener('click', (e)=> {
         e.stopPropagation()
         e.preventDefault()
-        copyClip(imageElement.src, `Copied ${imageElement.src}`)
+        copyClip(attemptBetterQuality(imageElement.src), `Copied ${attemptBetterQuality(imageElement.src)}`)
     })
     const attachTo = isVideo ? imageElement.parentElement.parentElement: imageElement.parentElement;
     //const size = imageElement.getBoundingClientRect()
@@ -203,7 +210,7 @@ const createCopyButton = (imageElement) => {
     attachTo.addEventListener('pointerenter', (e)=>{
         //console.log("enter")
         button.style.display = "block"
-        hoveredElement = imageElement.src;
+        hoveredElement = attemptBetterQuality(imageElement.src);
     })
     attachTo.addEventListener('pointerleave', (e)=>{
         //console.log("exit")
@@ -220,7 +227,7 @@ document.addEventListener("keypress", e=> {
     if(hoveredElement) {
 
         if(e.key === "c") {
-            copyClip(hoveredElement, `Copied ${hoveredElement}`)
+            copyClip(attemptBetterQuality(hoveredElement), `Copied ${hoveredElement}`)
         }
     }
 })
@@ -255,8 +262,16 @@ setTimeout(()=>{
         const isChecked = event.target.checked
         localStorage.setItem("src-tools-auto-copy-mp4",isChecked);
     })
-    createButton('copy webm 🎞️', 'video/webm', 30)
-    createButton('copy image 🖼️ urls', 'image', 60)
+    const autoCopyWebm = localStorage.getItem("src-tools-auto-copy-webm") === 'true';
+    createButton('copy webm 🎞️ a:', 'video/webm', 30, autoCopyWebm, event=>{
+        const isChecked = event.target.checked
+        localStorage.setItem("src-tools-auto-copy-webm",isChecked);
+    })
+    const autoCopyImage = localStorage.getItem("src-tools-auto-copy-image") === 'true';
+    createButton('copy image 🖼️ urls a:', 'image', 60, autoCopyImage, event=>{
+        const isChecked = event.target.checked
+        localStorage.setItem("src-tools-auto-copy-image",isChecked);
+    })
     const pauseAllVideos = localStorage.getItem("src-tools-pause-all-videos") === 'true';
     console.log({pauseAllVideos})
     createCheckbox('Pause videos', pauseAllVideos, event => {
@@ -265,6 +280,12 @@ setTimeout(()=>{
         localStorage.setItem("src-tools-pause-all-videos",isChecked);
         document.querySelectorAll("video").forEach(item=> isChecked ? item.pause() : item.play())
     }, 90)
+    const bestQuality = localStorage.getItem("src-tools-best-quality-videos") === 'true';
+    createCheckbox('Best quality src', bestQuality, event => {
+        const isChecked = event.target.checked
+        console.log(isChecked, event.target, event.target.value, event.target.checked )
+        localStorage.setItem("src-tools-best-quality-videos",isChecked);
+    }, 120)
 }, 2000)
 
 const callback = (mutationList, observer) => {
@@ -280,9 +301,17 @@ const callback = (mutationList, observer) => {
                 sources.filter(item=>item.type === "video/mp4").forEach(createCopyButton)
             }
         }, 500)
-         const autoCopyMp4 = localStorage.getItem("src-tools-auto-copy-mp4") === 'true';
+         const autoCopyMp4 = document.getElementById('copy mp4 🎞️ a:-check').checked;
         if(autoCopyMp4) {
            copyLinks("video/mp4")
+        }
+        const autoCopyImages = document.getElementById('copy image 🖼️ urls a:-check').checked
+        if(autoCopyImages) {
+            copyLinks("image")
+        }
+        const autoCopyWebm = document.getElementById('copy webm 🎞️ a:-check').checked
+        if(autoCopyImages) {
+            copyLinks("video/webm")
         }
 
     } else if (mutation.type === "attributes") {
@@ -303,4 +332,4 @@ setTimeout(()=>{
     const sources = Array.from(document.querySelectorAll("source"))
     //console.log({sources})
     sources.filter(item=>item.type === "video/mp4").forEach(createCopyButton)
-}, 7000)
+}, 3000)
