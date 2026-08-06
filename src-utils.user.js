@@ -4,8 +4,8 @@
 // @version      2025-12-10
 // @description  copies to clipboard all loaded video and image src links
 // @author       blurymind
-// @match        https://civitai.com/*
-// @include      https://civitai.com/*
+// @match        https://civitai*
+// @include      https://civitai*
 // @include      https://*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=civitai.com
 // @grant        unsafeWindow
@@ -193,10 +193,29 @@ const createCopyButton = (imageElement) => {
     display: none;
     `;
 
+    function fetchFile(url) {
+    fetch(url).then(res => res.blob()).then(file => {
+        let tempUrl = URL.createObjectURL(file);
+        const aTag = document.createElement("a");
+        aTag.href = tempUrl;
+        aTag.download = url.replace(/^.*[\\\/]/, '');
+        document.body.appendChild(aTag);
+        aTag.click();
+        URL.revokeObjectURL(tempUrl);
+        aTag.remove();
+        //new Toast(`Failed to copy ${text}`,ToastType.Danger,2000);
+    }).catch(() => {
+        new Toast(`Failed to download ${text}`,ToastType.Danger,2000);
+        console.log("Failed to download file!");
+
+    });
+}
+
     button.addEventListener('click', (e)=> {
         e.stopPropagation()
         e.preventDefault()
-        copyClip(attemptBetterQuality(imageElement.src), `Copied ${attemptBetterQuality(imageElement.src)}`)
+        fetchFile(attemptBetterQuality(imageElement.src))
+        //copyClip(attemptBetterQuality(imageElement.src), `Copied ${attemptBetterQuality(imageElement.src)}`)
     })
     const attachTo = isVideo ? imageElement.parentElement.parentElement: imageElement.parentElement;
     //const size = imageElement.getBoundingClientRect()
