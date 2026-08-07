@@ -99,6 +99,7 @@ const attemptBetterQuality = (url) => {
     return url;
 }
 
+
 const copyClip = (text, toast, warn=false, limitToast = 4) => {
     const bestQ = document.getElementById('Best quality src').checked
         navigator.clipboard.writeText(text).then(
@@ -112,6 +113,25 @@ const copyClip = (text, toast, warn=false, limitToast = 4) => {
             },
         );
 }
+const fetchFile = (url) => {
+    fetch(url).then(res => res.blob()).then(file => {
+        let tempUrl = URL.createObjectURL(file);
+        const aTag = document.createElement("a");
+        aTag.href = tempUrl;
+        aTag.download = url.replace(/^.*[\\\/]/, '');//filename
+        document.body.appendChild(aTag);
+        aTag.click();
+        URL.revokeObjectURL(tempUrl);
+        aTag.remove();
+        //new Toast(`Failed to copy ${text}`,ToastType.Danger,2000);
+    }).catch(() => {
+        new Toast(`Failed to download ${url}`,ToastType.Danger,2000);
+        console.log("Failed to download file!");
+    }).then(()=> {
+        copyClip(attemptBetterQuality(url), `Copied ${attemptBetterQuality(url)}`)
+    });
+}
+
 const copyLinks = (type='video/mp4')=>{
     if(type.startsWith('video')){
         const sources = [...document.querySelectorAll('source')]
@@ -131,19 +151,22 @@ const copyLinks = (type='video/mp4')=>{
 }
 
 const getRoot = () => document.getElementById('main') ?? document.body.querySelector("main") ?? document.body;
-const createButton = (name='Copy src', type='video', offset = 10, isChecked, onToggle) => {
+const createButton = (name='Copy src', type='video', offset = 10, isChecked, onToggle, parent) => {
     const wrapper = document.createElement('div');
-    const button = document.createElement('button');
     const checkbox = document.createElement('input');
     checkbox.type= 'checkbox'
     checkbox.checked = isChecked
     checkbox.id = name + '-check'
+    if(isChecked != null) {
+        checkbox.addEventListener('change', onToggle)
+        wrapper.appendChild(checkbox)
+    }
+    const button = document.createElement('button');
     button.innerText = name;
     button.id = name;
     wrapper.style = `
-    position: fixed;
-    z-index: 999;
-    background: #000000e0;
+
+
     color: yellow;
     padding: 2px;
     border-radius: 3px;
@@ -154,20 +177,21 @@ const createButton = (name='Copy src', type='video', offset = 10, isChecked, onT
     flex: 1;
     `;
     button.style = `
-flex:1;
+     flex:1;
+     background-color: black;
+     border: 1px solid grey;
+     border-radius: 0.2rem;
     `
 
     button.addEventListener('click', ()=> {
         copyLinks(type)
     })
-    const root = getRoot();
-    console.log({root})
-    wrapper.appendChild(button)
-    if(isChecked != null) {
-        checkbox.addEventListener('change', onToggle)
-        wrapper.appendChild(checkbox)
-    }
-    root.appendChild(wrapper);
+
+    wrapper.appendChild(button);
+    console.log({parent});
+    parent.appendChild(wrapper);
+
+
 }
 
 let hoveredElement
@@ -192,30 +216,34 @@ const createCopyButton = (imageElement) => {
     border: none;
     display: none;
     `;
+    if (isVideo) {
+     console.log({imageElement})
+     const videoWrapper = imageElement.parentNode?.parentNode?.parentNode?.parentNode?.parentNode?.parentNode;
+     button.addEventListener('pointerover', e => {
 
-    function fetchFile(url) {
-    fetch(url).then(res => res.blob()).then(file => {
-        let tempUrl = URL.createObjectURL(file);
-        const aTag = document.createElement("a");
-        aTag.href = tempUrl;
-        aTag.download = url.replace(/^.*[\\\/]/, '');
-        document.body.appendChild(aTag);
-        aTag.click();
-        URL.revokeObjectURL(tempUrl);
-        aTag.remove();
-        //new Toast(`Failed to copy ${text}`,ToastType.Danger,2000);
-    }).catch(() => {
-        new Toast(`Failed to download ${text}`,ToastType.Danger,2000);
-        console.log("Failed to download file!");
-
-    });
-}
+         if (videoWrapper) {
+           imageElement.parentNode.muted = false;
+           imageElement.parentNode.play()
+             videoWrapper.style.zIndex = 99999999999999;
+           ///console.log(videoWrapper.style.translate, videoWrapper.style.transform.split('(')[1].split(')')[0])
+           videoWrapper.style.transformOrigin = `0px ${videoWrapper.style.transform.split('(')[1].split(')')[0]}`;
+           videoWrapper.style.transition = 'scale 200ms ease-in';
+           videoWrapper.style.scale = '1.2';
+         }
+     })
+     imageElement.parentNode.addEventListener('pointerout', e => {
+         imageElement.parentNode.muted = true;
+         imageElement.parentNode.play()
+         if (videoWrapper) videoWrapper.style.scale = '1'
+         videoWrapper.style.zIndex = undefined;
+     })
+    }
 
     button.addEventListener('click', (e)=> {
         e.stopPropagation()
         e.preventDefault()
         fetchFile(attemptBetterQuality(imageElement.src))
-        //copyClip(attemptBetterQuality(imageElement.src), `Copied ${attemptBetterQuality(imageElement.src)}`)
+       
     })
     const attachTo = isVideo ? imageElement.parentElement.parentElement: imageElement.parentElement;
     //const size = imageElement.getBoundingClientRect()
@@ -251,7 +279,7 @@ document.addEventListener("keypress", e=> {
     }
 })
 
-const createCheckbox = (name, isTrue, onToggle, offset) => {
+const createCheckbox = (name, isTrue, onToggle, offset, parent) => {
     const wrapper = document.createElement('div');
     const checkbox = document.createElement('input');
     wrapper.innerText = name;
@@ -259,8 +287,6 @@ const createCheckbox = (name, isTrue, onToggle, offset) => {
     checkbox.type= 'checkbox'
     checkbox.checked = isTrue
     wrapper.style = `
-    position: fixed;
-    z-index: 999;
     background: #000000e0;
     color: yellow;
     padding: 2px;
@@ -270,27 +296,60 @@ const createCheckbox = (name, isTrue, onToggle, offset) => {
     top: ${100 + (offset|| 0)}px;
     `;
     checkbox.addEventListener('change', onToggle)
+
     const root = getRoot();
     wrapper.appendChild(checkbox);
-    root.appendChild(wrapper)
+    parent.appendChild(wrapper)
 }
 
 setTimeout(()=>{
+    const root = getRoot();
+    const wrapper = document.createElement('div');
+    wrapper.id = "tools-wrapper";
+    wrapper.className = "tools-wrapper";
+    let style = document.createElement('style');
+    style.innerHTML = `
+    body {
+    .tools-wrapper {
+     position: fixed;
+    z-index: 999;
+    background: #000000e0;
+    color: yellow;
+    padding: 2px;
+    border-radius: 3px;
+    top: ${100}px;
+    right: -160px;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.2s ease-out;
+    opacity: 0.2;
+    }
+     .tools-wrapper:hover {
+      right: 10px;
+      opacity: 1;
+     }
+    }
+    `;
+    document.head.appendChild(style);
+
+    const appendTo = wrapper;
+    root.appendChild(appendTo)
+
     const autoCopyMp4 = localStorage.getItem("src-tools-auto-copy-mp4") === 'true';
     createButton('copy mp4 🎞️ a:', 'video/mp4', 0, autoCopyMp4, event => {
         const isChecked = event.target.checked
         localStorage.setItem("src-tools-auto-copy-mp4",isChecked);
-    })
+    }, appendTo)
     const autoCopyWebm = localStorage.getItem("src-tools-auto-copy-webm") === 'true';
     createButton('copy webm 🎞️ a:', 'video/webm', 30, autoCopyWebm, event=>{
         const isChecked = event.target.checked
         localStorage.setItem("src-tools-auto-copy-webm",isChecked);
-    })
+    }, appendTo)
     const autoCopyImage = localStorage.getItem("src-tools-auto-copy-image") === 'true';
     createButton('copy image 🖼️ urls a:', 'image', 60, autoCopyImage, event=>{
         const isChecked = event.target.checked
         localStorage.setItem("src-tools-auto-copy-image",isChecked);
-    })
+    }, appendTo)
     const pauseAllVideos = localStorage.getItem("src-tools-pause-all-videos") === 'true';
     console.log({pauseAllVideos})
     createCheckbox('Pause videos', pauseAllVideos, event => {
@@ -298,13 +357,15 @@ setTimeout(()=>{
         console.log(isChecked, event.target, event.target.value, event.target.checked )
         localStorage.setItem("src-tools-pause-all-videos",isChecked);
         document.querySelectorAll("video").forEach(item=> isChecked ? item.pause() : item.play())
-    }, 90)
+    }, 90, appendTo)
     const bestQuality = localStorage.getItem("src-tools-best-quality-videos") === 'true';
     createCheckbox('Best quality src', bestQuality, event => {
         const isChecked = event.target.checked
         console.log(isChecked, event.target, event.target.value, event.target.checked )
         localStorage.setItem("src-tools-best-quality-videos",isChecked);
-    }, 120)
+    }, 120, appendTo)
+
+
 }, 2000)
 
 const callback = (mutationList, observer) => {
@@ -320,15 +381,15 @@ const callback = (mutationList, observer) => {
                 sources.filter(item=>item.type === "video/mp4").forEach(createCopyButton)
             }
         }, 500)
-         const autoCopyMp4 = document.getElementById('copy mp4 🎞️ a:-check').checked;
+         const autoCopyMp4 = document.getElementById('copy mp4 🎞️ a:-check')?.checked;
         if(autoCopyMp4) {
            copyLinks("video/mp4")
         }
-        const autoCopyImages = document.getElementById('copy image 🖼️ urls a:-check').checked
+        const autoCopyImages = document.getElementById('copy image 🖼️ urls a:-check')?.checked
         if(autoCopyImages) {
             copyLinks("image")
         }
-        const autoCopyWebm = document.getElementById('copy webm 🎞️ a:-check').checked
+        const autoCopyWebm = document.getElementById('copy webm 🎞️ a:-check')?.checked
         if(autoCopyImages) {
             copyLinks("video/webm")
         }
