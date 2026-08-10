@@ -113,7 +113,7 @@ const copyClip = (text, toast, warn=false, limitToast = 4) => {
             },
         );
 }
-const fetchFile = (url) => {
+const fetchFile = (url, cb = ()=>{}) => {
     fetch(url).then(res => res.blob()).then(file => {
         let tempUrl = URL.createObjectURL(file);
         const aTag = document.createElement("a");
@@ -123,12 +123,15 @@ const fetchFile = (url) => {
         aTag.click();
         URL.revokeObjectURL(tempUrl);
         aTag.remove();
+
         //new Toast(`Failed to copy ${text}`,ToastType.Danger,2000);
     }).catch(() => {
         new Toast(`Failed to download ${url}`,ToastType.Danger,2000);
         console.log("Failed to download file!");
+        cb('error')
     }).then(()=> {
-        copyClip(attemptBetterQuality(url), `Copied ${attemptBetterQuality(url)}`)
+           cb('ok')
+        //copyClip(attemptBetterQuality(url), `Copied ${attemptBetterQuality(url)}`)
     });
 }
 
@@ -203,19 +206,6 @@ const createCopyButton = (imageElement) => {
     button.innerText = isVideo ? "📋🎞️" : " 📋🖼️ ";
     button.title = attemptBetterQuality(imageElement.src);
     button.className = "copyButt"
-    button.style = `
-    position: absolute;
-    z-index: 999;
-    background: #000000e0;
-    color: yellow;
-    border-radius: 3px;
-    padding: 5px;
-    opacity: 0.7;
-    right: 50%;
-    top: 50%;
-    border: none;
-    display: none;
-    `;
     if (isVideo) {
      console.log({imageElement})
      const videoWrapper = imageElement.parentNode?.parentNode?.parentNode?.parentNode?.parentNode?.parentNode;
@@ -242,8 +232,14 @@ const createCopyButton = (imageElement) => {
     button.addEventListener('click', (e)=> {
         e.stopPropagation()
         e.preventDefault()
-        fetchFile(attemptBetterQuality(imageElement.src))
-       
+        fetchFile(attemptBetterQuality(imageElement.src), r=> {
+            if(r == 'ok') {
+               button.style = 'border: 3px solid green;'
+            } else {
+            button.style = 'border: 3px solid red;'
+            }
+        })
+
     })
     const attachTo = isVideo ? imageElement.parentElement.parentElement: imageElement.parentElement;
     //const size = imageElement.getBoundingClientRect()
@@ -328,6 +324,23 @@ setTimeout(()=>{
       right: 10px;
       opacity: 1;
      }
+    }
+
+    .copyButt{
+       position: absolute;
+    z-index: 999;
+    background: #000000e0;
+    color: yellow;
+    border-radius: 3px;
+    padding: 5px;
+    opacity: 0.17;
+    right: 50%;
+    top: 50%;
+    border: none;
+    display: none;
+    }
+    .copyButt:hover {
+      opacity: 0.7;
     }
     `;
     document.head.appendChild(style);
