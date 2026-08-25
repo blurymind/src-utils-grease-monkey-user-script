@@ -234,13 +234,21 @@ const createCopyButton = (imageElement) => {
         e.preventDefault()
         fetchFile(attemptBetterQuality(imageElement.src), r=> {
             if(r == 'ok') {
+                localStorage.setItem('downloaded-'+ imageElement.src, true);
                button.style = 'border: 3px solid green;'
+               imageElement.parentElement.parentElement.style.border ='3px solid green'
             } else {
-            button.style = 'border: 3px solid red;'
+                localStorage.removeItem('downloaded-'+imageElement.src);
+                button.style = 'border: 3px solid red;'
+                imageElement.parentElement.parentElement.style.border ='3px solid red'
             }
         })
 
     })
+    if(localStorage.getItem('downloaded-'+ imageElement.src)){
+        button.style = 'border: 3px solid green;'
+        imageElement.parentElement.parentElement.style.border ='3px solid green'
+    }
     const attachTo = isVideo ? imageElement.parentElement.parentElement: imageElement.parentElement;
     //const size = imageElement.getBoundingClientRect()
     if(isVideo) {
