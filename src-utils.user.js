@@ -123,14 +123,14 @@ const fetchFile = (url, cb = ()=>{}) => {
         aTag.click();
         URL.revokeObjectURL(tempUrl);
         aTag.remove();
-
+        cb('ok')
         //new Toast(`Failed to copy ${text}`,ToastType.Danger,2000);
     }).catch(() => {
         new Toast(`Failed to download ${url}`,ToastType.Danger,2000);
         console.log("Failed to download file!");
         cb('error')
     }).then(()=> {
-           cb('ok')
+           //cb('ok')
         //copyClip(attemptBetterQuality(url), `Copied ${attemptBetterQuality(url)}`)
     });
 }
@@ -198,6 +198,7 @@ const createButton = (name='Copy src', type='video', offset = 10, isChecked, onT
 }
 
 let hoveredElement
+
 const createCopyButton = (imageElement) => {
     const isVideo = imageElement.tagName === "SOURCE"
     imageElement.style.position = "relative"
@@ -229,25 +230,31 @@ const createCopyButton = (imageElement) => {
      })
     }
 
+    const setColorOutline = (color) => {
+        button.style = `border: 3px solid ${color};`
+        imageElement.parentElement.parentElement.style = `border: 3px solid ${color};`
+    }
+    const downloadBestLinkWithReattempt = (url, reAttempt = false) => {
+        setColorOutline('white')
+        fetchFile(reAttempt ? url: attemptBetterQuality(url), r=> {
+            if(r !== 'error') {
+                localStorage.setItem('downloaded-'+ url, true);
+                setColorOutline(reAttempt ? 'yellow' : 'green')
+            } else {
+                localStorage.removeItem('downloaded-'+ url);
+                setColorOutline('red')
+                if(!reAttempt) downloadBestLinkWithReattempt(url, true)
+
+            }
+        })
+    }
     button.addEventListener('click', (e)=> {
         e.stopPropagation()
         e.preventDefault()
-        fetchFile(attemptBetterQuality(imageElement.src), r=> {
-            if(r == 'ok') {
-                localStorage.setItem('downloaded-'+ imageElement.src, true);
-               button.style = 'border: 3px solid green;'
-               imageElement.parentElement.parentElement.style.border ='3px solid green'
-            } else {
-                localStorage.removeItem('downloaded-'+imageElement.src);
-                button.style = 'border: 3px solid red;'
-                imageElement.parentElement.parentElement.style.border ='3px solid red'
-            }
-        })
-
+        downloadBestLinkWithReattempt(imageElement.src);
     })
     if(localStorage.getItem('downloaded-'+ imageElement.src)){
-        button.style = 'border: 3px solid green;'
-        imageElement.parentElement.parentElement.style.border ='3px solid green'
+        setColorOutline('green');
     }
     const attachTo = isVideo ? imageElement.parentElement.parentElement: imageElement.parentElement;
     //const size = imageElement.getBoundingClientRect()
