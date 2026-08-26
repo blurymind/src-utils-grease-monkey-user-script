@@ -212,6 +212,7 @@ const createCopyButton = (imageElement) => {
      const videoWrapper = imageElement.parentNode?.parentNode?.parentNode?.parentNode?.parentNode?.parentNode;
      button.addEventListener('pointerover', e => {
 
+         console.log(e)
          if (videoWrapper) {
            imageElement.parentNode.muted = false;
            imageElement.parentNode.play()
@@ -220,6 +221,7 @@ const createCopyButton = (imageElement) => {
            videoWrapper.style.transformOrigin = `0px ${videoWrapper.style.transform.split('(')[1].split(')')[0]}`;
            videoWrapper.style.transition = 'scale 200ms ease-in';
            videoWrapper.style.scale = '1.2';
+             button.style.scale = '3.5'
          }
      })
      imageElement.parentNode.addEventListener('pointerout', e => {
@@ -227,6 +229,7 @@ const createCopyButton = (imageElement) => {
          imageElement.parentNode.play()
          if (videoWrapper) videoWrapper.style.scale = '1'
          videoWrapper.style.zIndex = undefined;
+          button.style.scale = '1'
      })
     }
 
@@ -277,7 +280,10 @@ const createCopyButton = (imageElement) => {
     })
     attachTo.style.filter = "none";
 
-    attachTo.appendChild(button);
+
+     attachTo.appendChild(button);
+    //}
+   
 }
 
 document.addEventListener("keypress", e=> {
